@@ -2,13 +2,9 @@ from setuptools import setup, find_packages
 
 setup(
     name='sphinx-versioning',
-    version='0.0.1',
+    version='0.0.2',
     packages=find_packages(),
-    entry_points={
-        'console_scripts': [
-            'sphinx-version=sphinx_versioning.sphinx_version:main_function',
-        ],
-    },
+    scripts=['scripts/sphinx-version'],
     url='https://github.com/Yihengxiong6/sphinx_versioning',
     author='Yiheng Xiong',
     author_email='georgex8866@gmail.com',
