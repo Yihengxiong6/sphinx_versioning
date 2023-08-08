@@ -4,8 +4,12 @@ setup(
     name='sphinx-versioning',
     version='0.0.1',
     packages=find_packages(),
-    scripts=['scripts/sphinx-version'],
-    url='https://github.com/Yihengxiong6/sphinx-versioning',
+    entry_points={
+        'console_scripts': [
+            'sphinx-version=sphinx_versioning.sphinx_version:main_function',
+        ],
+    },
+    url='https://github.com/Yihengxiong6/sphinx_versioning',
     author='Yiheng Xiong',
     author_email='georgex8866@gmail.com',
     description='A Sphinx extension to manage versioned documentation',
