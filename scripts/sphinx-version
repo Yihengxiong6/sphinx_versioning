@@ -15,10 +15,34 @@ parser.add_argument('-d', '--delete', action='store_true', help='Delete the vers
 
 args = parser.parse_args()
 
-docs_dir = os.getcwd()
+def find_conf_file(start_dir):
+    """
+    Search for conf.py in the current directory and one level down.
+    Return its path if found, otherwise return None.
+    """
+    conf_file = 'conf.py'
+    # Check in the current directory
+    if os.path.exists(os.path.join(start_dir, conf_file)):
+        return os.path.join(start_dir, conf_file)
+    
+    # Check one level deeper
+    for subdir in os.listdir(start_dir):
+        subdir_path = os.path.join(start_dir, subdir)
+        if os.path.isdir(subdir_path) and os.path.exists(os.path.join(subdir_path, conf_file)):
+            return os.path.join(subdir_path, conf_file)
+    
+    return None
+
+conf_file_path = find_conf_file(os.getcwd())
+
+if not conf_file_path:
+    logging.error("[ERROR] conf.py not found")
+    exit(1)
+
+docs_dir = os.path.dirname(conf_file_path)
 parent_dir = os.path.dirname(docs_dir)
 
-logging.info(f"current docs_dir is {docs_dir}")
+logging.info(f"Detected Sphinx directory at {docs_dir}")
 
 if args.delete:
     if not os.path.exists(os.path.join(docs_dir, f"_static/sphinx_versioning_plugin/{args.version}")):
