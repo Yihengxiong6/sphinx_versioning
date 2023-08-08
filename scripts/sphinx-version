@@ -35,7 +35,7 @@ def set_version_build_env():
     try:
         yield
     finally:
-        os.environ["SPHINX_VERSIONING_PLUGIN"] = None
+        del os.environ["SPHINX_VERSIONING_PLUGIN"]
 
 
 parser = argparse.ArgumentParser(description='Manage Sphinx versioned documentation.')
@@ -61,7 +61,7 @@ if args.delete:
         exit(1)
 
     # Delete version
-    shutil.rmtree(f"_static/sphinx_versioning_plugin/{args.version}")
+    shutil.rmtree(os.path.join(docs_dir, f"_static/sphinx_versioning_plugin/{args.version}"))
 
 # Add a new version
 else:
