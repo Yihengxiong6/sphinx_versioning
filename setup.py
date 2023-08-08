@@ -4,7 +4,7 @@ setup(
     name='sphinx-versioning',
     version='0.0.2',
     packages=find_packages(),
-    scripts=['scripts/sphinx-version'],
+    scripts=['scripts/sphinx-version.py'],
     url='https://github.com/Yihengxiong6/sphinx_versioning',
     author='Yiheng Xiong',
     author_email='georgex8866@gmail.com',
