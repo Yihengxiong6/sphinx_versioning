@@ -5,7 +5,7 @@ logger = logging.getLogger(__name__)
 
 TEMPLATE_CONTENT = """{% if sphinx_versions %}
     <h4>{{ _('Versions') }}</h4>
-    <ul style="list-style-type: none;">
+    <ul style="list-style-type: none;" id="sphinx_versioning_plugin_ul">
     {%- for item in sphinx_versions %}
         <li style="margin-bottom: 10px;"><a href="{{ pathto('_static/sphinx_versioning_plugin/{}'.format(item), 1) }}">{{ item }}</a></li>
     {%- endfor %}
