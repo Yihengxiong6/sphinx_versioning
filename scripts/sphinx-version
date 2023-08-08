@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+
+import argparse
+import json
+import os
+import shutil
+from sphinx.cmd.build import build_main
+import tempfile
+
+parser = argparse.ArgumentParser(description='Manage Sphinx versioned documentation.')
+parser.add_argument('--version', type=str, required=True, help='Version to manage.')
+parser.add_argument('-d', '--delete', action='store_true', help='Delete version.')
+
+args = parser.parse_args()
+
+# Make sure versions directory exists
+os.makedirs('_versions', exist_ok=True)
+
+# Load existing versions
+try:
+    with open("_versions/versions.json") as f:
+        versions = json.load(f)
+except (FileNotFoundError, json.JSONDecodeError):
+    versions = []
+
+if args.delete:
+    # Delete version
+    shutil.rmtree(f"_versions/{args.version}")
+    versions.remove(args.version)
+else:
+    # Add version
+    # Create a temporary directory
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Copy the documentation source to the temporary directory
+        shutil.copytree('.', os.path.join(temp_dir, 'source'), dirs_exist_ok=True)
+        # Remove the versions directory from the temporary directory
+        shutil.rmtree(os.path.join(temp_dir, 'source', '_versions'), ignore_errors=True)
+        # Build the docs using the temporary directory as the source
+        build_main(["-b", "html", os.path.join(temp_dir, 'source'), f"_versions/{args.version}"])
+    
+    versions.append(args.version)
+
+# Save versions
+with open("_versions/versions.json", "w") as f:
+    json.dump(versions, f)
