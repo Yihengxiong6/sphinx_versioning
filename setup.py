@@ -25,5 +25,5 @@ setup(
     ],
     keywords='sphinx documentation versioning',
     python_requires='>=3.7',
-    install_requires=['Sphinx']
+    install_requires=['Sphinx', 'beautifulsoup4'],
 )
