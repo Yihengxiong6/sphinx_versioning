@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='sphinx-versioning',
-    version='0.0.4',
+    version='0.0.5',
     packages=find_packages(),
     scripts=['scripts/sphinx-version'],
     url='https://github.com/Yihengxiong6/sphinx_versioning',
@@ -25,5 +25,5 @@ setup(
     ],
     keywords='sphinx documentation versioning',
     python_requires='>=3.7',
-    install_requires=['Sphinx']
+    install_requires=['Sphinx', 'beautifulsoup4'],
 )

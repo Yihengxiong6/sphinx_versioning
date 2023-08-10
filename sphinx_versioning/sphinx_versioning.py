@@ -1,5 +1,6 @@
 import os
 from sphinx.util import logging
+from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +66,41 @@ def get_version_list(app):
     return sorted(subdirs, reverse=True)  # Assuming you'd like the versions sorted in descending order
 
 
+def update_sidebar_links_for_versioned_docs(versions_dir, versions):
+    """
+    Update the index.html files under each version in `_static/sphinx_versioning_plugin/` with the available versions.
+    """
+    for version in versions:
+        index_file_path = os.path.join(versions_dir, version, "index.html")
+        
+        if os.path.exists(index_file_path):
+            with open(index_file_path, 'r') as f:
+                soup = BeautifulSoup(f, 'html.parser')
+                
+                # Find the ul tag with the specified id
+                ul_tag = soup.find("ul", {"id": "sphinx_versioning_plugin_ul"})
+                
+                # If the ul tag exists, update its content
+                if ul_tag:
+                    ul_tag.clear()  # Clear existing li elements
+                    li_latest = soup.new_tag("li", style="margin-bottom: 10px;")
+                    a_latest = soup.new_tag("a", href="/")
+                    a_latest.string = "Latest"
+                    li_latest.append(a_latest)
+                    ul_tag.append(li_latest)
+                    
+                    for v in versions:
+                        li = soup.new_tag("li", style="margin-bottom: 10px;")
+                        a = soup.new_tag("a", href=f"../{v}")
+                        a.string = v
+                        li.append(a)
+                        ul_tag.append(li)
+
+            with open(index_file_path, 'w') as f:
+                f.write(str(soup))
+
+
+
 def generate_versioning_sidebar(app, config):
     
     sphinx_versions_env = os.environ.get("SPHINX_VERSIONING_PLUGIN")
@@ -79,6 +115,11 @@ def generate_versioning_sidebar(app, config):
 
     # Get versions from the directory structure
     sphinx_versions = get_version_list(app)
+    
+    # Update the sidebar links for versioned docs
+    versions_dir = os.path.join(app.srcdir, "_static", "sphinx_versioning_plugin")
+
+    update_sidebar_links_for_versioned_docs(versions_dir, sphinx_versions)
 
     # update html_context with versions
     app.config.html_context.update({"sphinx_versions": sphinx_versions})
