@@ -39,7 +39,7 @@ def set_version_build_env():
 
 
 parser = argparse.ArgumentParser(description='Manage Sphinx versioned documentation.')
-parser.add_argument('-v', '--version', type=str, required=True, help='Version to manage')
+parser.add_argument('version', type=str, help='Version to manage')
 parser.add_argument('-d', '--delete', action='store_true', help='Delete the version')
 
 args = parser.parse_args()

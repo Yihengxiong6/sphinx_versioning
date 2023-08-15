@@ -4,24 +4,26 @@ from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
 
+
 TEMPLATE_CONTENT_LATEST_BUILD = """{% if sphinx_versions %}
-    <h4>{{ _('Versions') }}</h4>
-    <ul style="list-style-type: none;" id="sphinx_versioning_plugin_ul">
-    <li style="margin-bottom: 10px;"><a href="/">Latest</a></li>
-    {%- for item in sphinx_versions %}
-        <li style="margin-bottom: 10px;"><a href="{{ pathto('_static/sphinx_versioning_plugin/{}'.format(item), 1) }}">{{ item }}</a></li>
-    {%- endfor %}
-    </ul>
+    <span style="vertical-align: middle;">{{ _('Versions') }}</span>
+    <select style="vertical-align: middle; margin-left: 5px;" onchange="window.location.href=this.value" id="versionDropdown">
+        <option value="/" selected>Latest</option>
+        {%- for item in sphinx_versions %}
+            <option value="{{ pathto('_static/sphinx_versioning_plugin/{}'.format(item), 1) }}">{{ item }}</option>
+        {%- endfor %}
+    </select>
 {% endif %}
 """
 
-TEMPLATE_CONTENT_VERSION_BUILD = """<h4>{{ _('Versions') }}</h4>
-    <ul style="list-style-type: none;" id="sphinx_versioning_plugin_ul">
-        <li style="margin-bottom: 10px;"><a href="/">Latest</a></li>
-    </ul>
+TEMPLATE_CONTENT_VERSION_BUILD = """<span style="vertical-align: middle;">{{ _('Versions') }}</span>
+    <select style="vertical-align: middle; margin-left: 5px;" onchange="window.location.href=this.value" id="versionDropdown">
+        <option value="/">Latest</option>
+    </select>
 """
 
-def write_template_file_for_lates_build(app):
+
+def write_template_file_for_latest_build(app):
     """
     Write the template file for the latest build. The build should be triggered by `sphinx build`.
     The template should have link to all the versions available.
@@ -77,28 +79,29 @@ def update_sidebar_links_for_versioned_docs(versions_dir, versions):
             with open(index_file_path, 'r') as f:
                 soup = BeautifulSoup(f, 'html.parser')
                 
-                # Find the ul tag with the specified id
-                ul_tag = soup.find("ul", {"id": "sphinx_versioning_plugin_ul"})
+                # Find the select tag with the specified id
+                select_tag = soup.find("select", {"id": "versionDropdown"})
                 
-                # If the ul tag exists, update its content
-                if ul_tag:
-                    ul_tag.clear()  # Clear existing li elements
-                    li_latest = soup.new_tag("li", style="margin-bottom: 10px;")
-                    a_latest = soup.new_tag("a", href="/")
-                    a_latest.string = "Latest"
-                    li_latest.append(a_latest)
-                    ul_tag.append(li_latest)
+                # If the select tag exists, update its content
+                if select_tag:
+                    select_tag.clear()  # Clear existing options
+                    
+                    option_latest = soup.new_tag("option", value="/")
+                    option_latest.string = "Latest"
+                    select_tag.append(option_latest)
                     
                     for v in versions:
-                        li = soup.new_tag("li", style="margin-bottom: 10px;")
-                        a = soup.new_tag("a", href=f"../{v}")
-                        a.string = v
-                        li.append(a)
-                        ul_tag.append(li)
+                        option = soup.new_tag("option", value=f"../{v}")
+                        option.string = v
+
+                        # If this option corresponds to the current version, mark it as selected
+                        if v == version:
+                            option.attrs["selected"] = "selected"
+
+                        select_tag.append(option)
 
             with open(index_file_path, 'w') as f:
                 f.write(str(soup))
-
 
 
 def generate_versioning_sidebar(app, config):
@@ -106,12 +109,12 @@ def generate_versioning_sidebar(app, config):
     sphinx_versions_env = os.environ.get("SPHINX_VERSIONING_PLUGIN")
     
     if sphinx_versions_env == "1":
-        logger.info("SPHINX_VERSIONING_PLUGIN is set. Managing versioned docs")
+        logger.info("Versioned docs build")
         write_template_file_for_version_build(app)
         return
 
     # write the template file
-    write_template_file_for_lates_build(app)
+    write_template_file_for_latest_build(app)
 
     # Get versions from the directory structure
     sphinx_versions = get_version_list(app)
