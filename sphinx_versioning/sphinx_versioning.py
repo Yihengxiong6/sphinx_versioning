@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
 
-TEMPLATE_CONTENT_LATEST_BUILD = """{{% if sphinx_versions %}
+TEMPLATE_CONTENT_LATEST_BUILD = """{% if sphinx_versions %}
     <span style="vertical-align: middle;">{{ _('Versions') }}</span>
     <select style="vertical-align: middle; margin-left: 5px;" onchange="window.location.href=this.value" id="versionDropdown">
         <option value="/">Latest</option>
