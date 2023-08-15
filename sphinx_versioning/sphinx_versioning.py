@@ -81,8 +81,6 @@ def update_sidebar_links_for_versioned_docs(versions_dir, versions):
                 
                 # Find the select tag with the specified id
                 select_tag = soup.find("select", {"id": "versionDropdown"})
-
-                logger.info(f"select tag: {select_tag}")
                 
                 # If the select tag exists, update its content
                 if select_tag:
@@ -111,7 +109,7 @@ def generate_versioning_sidebar(app, config):
     sphinx_versions_env = os.environ.get("SPHINX_VERSIONING_PLUGIN")
     
     if sphinx_versions_env == "1":
-        logger.info("SPHINX_VERSIONING_PLUGIN is set. Managing versioned docs")
+        logger.info("Versioned docs build")
         write_template_file_for_version_build(app)
         return
 
