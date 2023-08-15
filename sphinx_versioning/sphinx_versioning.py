@@ -4,10 +4,11 @@ from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
 
+
 TEMPLATE_CONTENT_LATEST_BUILD = """{% if sphinx_versions %}
     <span style="vertical-align: middle;">{{ _('Versions') }}</span>
     <select style="vertical-align: middle; margin-left: 5px;" onchange="window.location.href=this.value" id="versionDropdown">
-        <option value="/">Latest</option>
+        <option value="/" selected>Latest</option>
         {%- for item in sphinx_versions %}
             <option value="{{ pathto('_static/sphinx_versioning_plugin/{}'.format(item), 1) }}">{{ item }}</option>
         {%- endfor %}
@@ -19,7 +20,6 @@ TEMPLATE_CONTENT_VERSION_BUILD = """<span style="vertical-align: middle;">{{ _('
     <select style="vertical-align: middle; margin-left: 5px;" onchange="window.location.href=this.value" id="versionDropdown">
         <option value="/">Latest</option>
     </select>
-{% endif %}
 """
 
 
@@ -95,6 +95,11 @@ def update_sidebar_links_for_versioned_docs(versions_dir, versions):
                     for v in versions:
                         option = soup.new_tag("option", value=f"../{v}")
                         option.string = v
+
+                        # If this option corresponds to the current version, mark it as selected
+                        if v == version:
+                            option.attrs["selected"] = "selected"
+
                         select_tag.append(option)
 
             with open(index_file_path, 'w') as f:
