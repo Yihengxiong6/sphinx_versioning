@@ -15,8 +15,7 @@ TEMPLATE_CONTENT_LATEST_BUILD = """{% if sphinx_versions %}
 {% endif %}
 """
 
-TEMPLATE_CONTENT_VERSION_BUILD = """{% if sphinx_versions %}
-    <span style="vertical-align: middle;">{{ _('Versions') }}</span>
+TEMPLATE_CONTENT_VERSION_BUILD = """<span style="vertical-align: middle;">{{ _('Versions') }}</span>
     <select style="vertical-align: middle; margin-left: 5px;" onchange="window.location.href=this.value" id="versionDropdown">
         <option value="/">Latest</option>
     </select>
@@ -24,7 +23,7 @@ TEMPLATE_CONTENT_VERSION_BUILD = """{% if sphinx_versions %}
 """
 
 
-def write_template_file_for_lates_build(app):
+def write_template_file_for_latest_build(app):
     """
     Write the template file for the latest build. The build should be triggered by `sphinx build`.
     The template should have link to all the versions available.
@@ -82,6 +81,8 @@ def update_sidebar_links_for_versioned_docs(versions_dir, versions):
                 
                 # Find the select tag with the specified id
                 select_tag = soup.find("select", {"id": "versionDropdown"})
+
+                logger.info(f"select tag: {select_tag}")
                 
                 # If the select tag exists, update its content
                 if select_tag:
@@ -110,7 +111,7 @@ def generate_versioning_sidebar(app, config):
         return
 
     # write the template file
-    write_template_file_for_lates_build(app)
+    write_template_file_for_latest_build(app)
 
     # Get versions from the directory structure
     sphinx_versions = get_version_list(app)
