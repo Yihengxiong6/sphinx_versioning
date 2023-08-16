@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import argparse
+import venv
+import subprocess
 import os
 import shutil
 from contextlib import contextmanager
@@ -29,23 +31,91 @@ def find_conf_file(start_dir):
     return None
 
 
+
+def activate_venv(venv_dir):
+    """
+    Activate virtual environment
+    """
+    activate_script = 'activate'
+    activate_path = os.path.join(venv_dir, 'bin', activate_script)
+    exec(compile(open(activate_path, "rb").read(), activate_path, 'exec'), dict(__file__=activate_path))
+
+
+def install_requirements(venv_dir, requirements_path):
+    """
+    Install requirements
+    """
+    pip_exe = os.path.join(venv_dir, 'bin', 'pip')
+    subprocess.check_call([pip_exe, 'install', '-r', requirements_path])
+
+
+@contextmanager
+def manage_venv(venv_dir, docs_dir, requirements_files):
+    """
+    Create and activate virtual environment
+    """
+    if not os.path.exists(venv_dir):
+        logging.info("Creating a virtual environment...")
+        venv.create(venv_dir, with_pip=True)
+    
+    for req in requirements_files:
+        logging.info("Installing dependencies from {}...".format(req))
+        install_requirements(venv_dir, os.path.join(docs_dir, req))
+
+    yield
+
+
+
 @contextmanager
 def set_version_build_env():
+    """
+    Set environment variable to indicate that the build is for a specific version
+    """
     os.environ["SPHINX_VERSIONING_PLUGIN"] = "1"
     try:
         yield
     finally:
         del os.environ["SPHINX_VERSIONING_PLUGIN"]
+        
+
+def build_version(temp_dir, docs_dir, version, venv_dir=None):
+    """
+    Build the version
+    """
+    shutil.copytree(docs_dir, temp_dir, dirs_exist_ok=True)
+    shutil.rmtree(os.path.join(temp_dir, '_static/sphinx_versioning_plugin'), ignore_errors=True)
+
+    if venv_dir:
+        with set_version_build_env():
+            python_exe = os.path.join(venv_dir, 'bin', 'python')
+            cmd = [python_exe, "-m", "sphinx.cmd.build", "-b", "html", temp_dir, os.path.join(docs_dir, f"_static/sphinx_versioning_plugin/{version}")]
+            try:
+                subprocess.check_call(cmd)
+            except subprocess.CalledProcessError:
+                logging.info(f"[ERROR] Failed to build the version {args.version}")
+                exit(1)
+    else:
+        with set_version_build_env():
+            # Build the docs using the temporary directory as the source
+            result = build_main(["-b", "html", temp_dir, os.path.join(docs_dir, f"_static/sphinx_versioning_plugin/{args.version}")])
+
+            if result == 2:
+                logging.info(f"[ERROR] Failed to build the version {args.version}")
+                exit(1)
+    
+    logging.info(f"Version {version} is added. Run sphinx build to see the version on the sidebar")
+
 
 
 parser = argparse.ArgumentParser(description='Manage Sphinx versioned documentation.')
 parser.add_argument('version', type=str, help='Version to manage')
 parser.add_argument('-d', '--delete', action='store_true', help='Delete the version')
+parser.add_argument('--venv', action='store_true', help='Use virtual environment to build')
+parser.add_argument('-r', '--requirements', type=str, help='Comma-separated requirements file names for the virtual environment')
 
 args = parser.parse_args()
 
 conf_file_path = find_conf_file(os.getcwd())
-
 if not conf_file_path:
     logging.error("[ERROR] conf.py not found")
     exit(1)
@@ -59,27 +129,13 @@ if args.delete:
     if not os.path.exists(os.path.join(docs_dir, f"_static/sphinx_versioning_plugin/{args.version}")):
         logging.error(f"[ERROR] {args.version} is not found!")
         exit(1)
-
-    # Delete version
     shutil.rmtree(os.path.join(docs_dir, f"_static/sphinx_versioning_plugin/{args.version}"))
-
-# Add a new version
 else:
-    # Create a temporary directory
     with tempfile.TemporaryDirectory(dir=parent_dir) as temp_dir:
-
-        # Copy the documentation source to the temporary directory
-        shutil.copytree(docs_dir, temp_dir, dirs_exist_ok=True)
-
-        # Remove the versions directory from the temporary directory
-        shutil.rmtree(os.path.join(temp_dir, '_static/sphinx_versioning_plugin'), ignore_errors=True)
-
-        with set_version_build_env():
-            # Build the docs using the temporary directory as the source
-            result = build_main(["-b", "html", temp_dir, os.path.join(docs_dir, f"_static/sphinx_versioning_plugin/{args.version}")])
-
-        if result == 2:
-            logging.info(f"[ERROR] Failed to build the version {args.version}")
-            exit(1)
-        
-        logging.info(f"Version {args.version} is added. Run sphinx build to see the version on the sidebar")
+        if args.venv:
+            venv_path = os.path.join(temp_dir, ".venv")
+            requirements_files = args.requirements.split(",") if args.requirements else []
+            with manage_venv(venv_path, docs_dir, requirements_files):
+                build_version(temp_dir, docs_dir, args.version, venv_path)
+        else:
+            build_version(temp_dir, docs_dir, args.version)

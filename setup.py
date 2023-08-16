@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='sphinx-versioning',
-    version='0.0.5',
+    version='0.1.0',
     packages=find_packages(),
     scripts=['scripts/sphinx-version'],
     url='https://github.com/Yihengxiong6/sphinx_versioning',
