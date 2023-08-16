@@ -110,7 +110,7 @@ def build_version(temp_dir, docs_dir, version, venv_dir=None):
 parser = argparse.ArgumentParser(description='Manage Sphinx versioned documentation.')
 parser.add_argument('version', type=str, help='Version to manage')
 parser.add_argument('-d', '--delete', action='store_true', help='Delete the version')
-parser.add_argument('-v', '--venv', action='store_true', help='Use virtual environment to build')
+parser.add_argument('--venv', action='store_true', help='Use virtual environment to build')
 parser.add_argument('-r', '--requirements', type=str, help='Comma-separated requirements file names for the virtual environment')
 
 args = parser.parse_args()
