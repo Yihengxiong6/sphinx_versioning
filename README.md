@@ -41,6 +41,7 @@ extensions = [
 html_sidebars = {
     '**': [
         # ... other sidebars ...
+        # Suggest putting the extension above the search bar for better UX.
         'sidebar/sphinx_versioning.html',
     ]
 }
