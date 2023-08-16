@@ -50,22 +50,17 @@ def install_requirements(venv_dir, requirements_path):
 
 
 @contextmanager
-def manage_venv(venv_dir, docs_dir):
+def manage_venv(venv_dir, docs_dir, requirements_files):
+    """
+    Create and activate virtual environment
+    """
     if not os.path.exists(venv_dir):
         logging.info("Creating a virtual environment...")
         venv.create(venv_dir, with_pip=True)
     
-    user_req = os.path.join(docs_dir, 'user-requirements.txt')
-    docs_req = os.path.join(docs_dir, 'docs-requirements.txt')
-    
-    print(user_req, docs_req)
-    if os.path.exists(user_req):
-        logging.info("Installing dependencies from user-requirements.txt...")
-        install_requirements(venv_dir, user_req)
-    
-    if os.path.exists(docs_req):
-        logging.info("Installing dependencies from docs-requirements.txt...")
-        install_requirements(venv_dir, docs_req)
+    for req in requirements_files:
+        logging.info("Installing dependencies from {}...".format(req))
+        install_requirements(venv_dir, os.path.join(docs_dir, req))
 
     yield
 
@@ -73,6 +68,9 @@ def manage_venv(venv_dir, docs_dir):
 
 @contextmanager
 def set_version_build_env():
+    """
+    Set environment variable to indicate that the build is for a specific version
+    """
     os.environ["SPHINX_VERSIONING_PLUGIN"] = "1"
     try:
         yield
@@ -81,6 +79,9 @@ def set_version_build_env():
         
 
 def build_version(temp_dir, docs_dir, version, venv_dir=None):
+    """
+    Build the version
+    """
     shutil.copytree(docs_dir, temp_dir, dirs_exist_ok=True)
     shutil.rmtree(os.path.join(temp_dir, '_static/sphinx_versioning_plugin'), ignore_errors=True)
 
@@ -110,6 +111,7 @@ parser = argparse.ArgumentParser(description='Manage Sphinx versioned documentat
 parser.add_argument('version', type=str, help='Version to manage')
 parser.add_argument('-d', '--delete', action='store_true', help='Delete the version')
 parser.add_argument('-v', '--venv', action='store_true', help='Use virtual environment to build')
+parser.add_argument('-r', '--requirements', type=str, help='Comma-separated requirements file names for the virtual environment')
 
 args = parser.parse_args()
 
@@ -132,7 +134,8 @@ else:
     with tempfile.TemporaryDirectory(dir=parent_dir) as temp_dir:
         if args.venv:
             venv_path = os.path.join(temp_dir, ".venv")
-            with manage_venv(venv_path, docs_dir):
+            requirements_files = args.requirements.split(",") if args.requirements else []
+            with manage_venv(venv_path, docs_dir, requirements_files):
                 build_version(temp_dir, docs_dir, args.version, venv_path)
         else:
             build_version(temp_dir, docs_dir, args.version)
