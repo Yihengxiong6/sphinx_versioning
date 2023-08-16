@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import argparse
+import venv
+import subprocess
 import os
 import shutil
 from contextlib import contextmanager
@@ -29,6 +31,49 @@ def find_conf_file(start_dir):
     return None
 
 
+
+def activate_venv(venv_dir):
+    """
+    Activate virtual environment
+    """
+    activate_script = 'activate.bat' if os.name == 'nt' else 'activate'
+    activate_path = os.path.join(venv_dir, 'Scripts', activate_script)
+    exec(compile(open(activate_path, "rb").read(), activate_path, 'exec'), dict(__file__=activate_path))
+
+
+def install_requirements(venv_dir, requirements_path):
+    """
+    Install requirements
+    """
+    pip_exe = os.path.join(venv_dir, 'Scripts', 'pip.exe' if os.name == 'nt' else 'pip')
+    subprocess.check_call([pip_exe, 'install', '-r', requirements_path])
+
+
+@contextmanager
+def manage_venv(venv_dir, docs_dir):
+    # If venv doesn't exist, create one
+    if not os.path.exists(venv_dir):
+        logging.info("Creating a virtual environment...")
+        venv.create(venv_dir, with_pip=True)
+    
+    # Activate venv
+    activate_venv(venv_dir)
+    
+    # Install dependencies
+    user_req = os.path.join(docs_dir, 'user-requirements.txt')
+    docs_req = os.path.join(docs_dir, 'docs-requirements.txt')
+    
+    if os.path.exists(user_req):
+        logging.info("Installing dependencies from user-requirements.txt...")
+        install_requirements(venv_dir, user_req)
+    
+    if os.path.exists(docs_req):
+        logging.info("Installing dependencies from docs-requirements.txt...")
+        install_requirements(venv_dir, docs_req)
+
+    yield
+
+
 @contextmanager
 def set_version_build_env():
     os.environ["SPHINX_VERSIONING_PLUGIN"] = "1"
@@ -36,11 +81,35 @@ def set_version_build_env():
         yield
     finally:
         del os.environ["SPHINX_VERSIONING_PLUGIN"]
+        
+
+def build_version(docs_dir, parent_dir, version):
+    # Create a temporary directory
+    with tempfile.TemporaryDirectory(dir=parent_dir) as temp_dir:
+
+        # Copy the documentation source to the temporary directory
+        shutil.copytree(docs_dir, temp_dir, dirs_exist_ok=True)
+
+        # Remove the versions directory from the temporary directory
+        shutil.rmtree(os.path.join(temp_dir, '_static/sphinx_versioning_plugin'), ignore_errors=True)
+
+        with set_version_build_env():
+            # Build the docs using the temporary directory as the source
+            result = build_main(["-b", "html", temp_dir, os.path.join(docs_dir, f"_static/sphinx_versioning_plugin/{version}")])
+
+        if result == 2:
+            logging.info(f"[ERROR] Failed to build the version {version}")
+            exit(1)
+        
+        logging.info(f"Version {version} is added. Run sphinx build to see the version on the sidebar")
+
 
 
 parser = argparse.ArgumentParser(description='Manage Sphinx versioned documentation.')
 parser.add_argument('version', type=str, help='Version to manage')
 parser.add_argument('-d', '--delete', action='store_true', help='Delete the version')
+parser.add_argument('-v', '--venv', action='store_true', help='Use virtual environment to build')
+
 
 args = parser.parse_args()
 
@@ -65,21 +134,8 @@ if args.delete:
 
 # Add a new version
 else:
-    # Create a temporary directory
-    with tempfile.TemporaryDirectory(dir=parent_dir) as temp_dir:
-
-        # Copy the documentation source to the temporary directory
-        shutil.copytree(docs_dir, temp_dir, dirs_exist_ok=True)
-
-        # Remove the versions directory from the temporary directory
-        shutil.rmtree(os.path.join(temp_dir, '_static/sphinx_versioning_plugin'), ignore_errors=True)
-
-        with set_version_build_env():
-            # Build the docs using the temporary directory as the source
-            result = build_main(["-b", "html", temp_dir, os.path.join(docs_dir, f"_static/sphinx_versioning_plugin/{args.version}")])
-
-        if result == 2:
-            logging.info(f"[ERROR] Failed to build the version {args.version}")
-            exit(1)
-        
-        logging.info(f"Version {args.version} is added. Run sphinx build to see the version on the sidebar")
+    if args.venv:
+        with manage_venv(os.path.join(parent_dir, ".venv"), docs_dir):
+            build_version(docs_dir, parent_dir, args.version)
+    else:
+        build_version(docs_dir, parent_dir, args.version)
