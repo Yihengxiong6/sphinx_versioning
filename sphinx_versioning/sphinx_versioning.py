@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 TEMPLATE_CONTENT_LATEST_BUILD = """{% if sphinx_versions %}
     <span style="vertical-align: middle;">{{ _('Versions') }}</span>
-    <select style="vertical-align: middle; margin-left: 5px;" onchange="window.location.href=this.value" id="versionDropdown">
+    <select style="vertical-align: middle; margin-left: 5px;" onchange="window.location.href=this.value" id="sphinx_versioning_dropdown_menu">
         <option value="/" selected>Latest</option>
         {%- for item in sphinx_versions %}
             <option value="{{ pathto('_static/sphinx_versioning_plugin/{}'.format(item), 1) }}">{{ item }}</option>
@@ -17,7 +17,7 @@ TEMPLATE_CONTENT_LATEST_BUILD = """{% if sphinx_versions %}
 """
 
 TEMPLATE_CONTENT_VERSION_BUILD = """<span style="vertical-align: middle;">{{ _('Versions') }}</span>
-    <select style="vertical-align: middle; margin-left: 5px;" onchange="window.location.href=this.value" id="versionDropdown">
+    <select style="vertical-align: middle; margin-left: 5px;" onchange="window.location.href=this.value" id="sphinx_versioning_dropdown_menu">
         <option value="/">Latest</option>
     </select>
 """
@@ -70,38 +70,44 @@ def get_version_list(app):
 
 def update_sidebar_links_for_versioned_docs(versions_dir, versions):
     """
-    Update the index.html files under each version in `_static/sphinx_versioning_plugin/` with the available versions.
+    Update all the .html files under each version in 
+    `_static/sphinx_versioning_plugin/` with the available versions.
     """
     for version in versions:
-        index_file_path = os.path.join(versions_dir, version, "index.html")
-        
-        if os.path.exists(index_file_path):
-            with open(index_file_path, 'r') as f:
-                soup = BeautifulSoup(f, 'html.parser')
-                
-                # Find the select tag with the specified id
-                select_tag = soup.find("select", {"id": "versionDropdown"})
-                
-                # If the select tag exists, update its content
-                if select_tag:
-                    select_tag.clear()  # Clear existing options
+        for root, dirs, files in os.walk(os.path.join(versions_dir, version)):
+            for file in files:
+                if file.endswith('.html'):
+                    file_path = os.path.join(root, file)
                     
-                    option_latest = soup.new_tag("option", value="/")
-                    option_latest.string = "Latest"
-                    select_tag.append(option_latest)
-                    
-                    for v in versions:
-                        option = soup.new_tag("option", value=f"../{v}")
-                        option.string = v
+                    try:
+                        with open(file_path, 'r') as f:
+                            soup = BeautifulSoup(f, 'html.parser')
 
-                        # If this option corresponds to the current version, mark it as selected
-                        if v == version:
-                            option.attrs["selected"] = "selected"
+                            # Find the select tag with the specified id
+                            select_tag = soup.find("select", {"id": "sphinx_versioning_dropdown_menu"})
 
-                        select_tag.append(option)
+                            if select_tag:
+                                select_tag.clear()  # Clear existing options
 
-            with open(index_file_path, 'w') as f:
-                f.write(str(soup))
+                                option_latest = soup.new_tag("option", value="/")
+                                option_latest.string = "Latest"
+                                select_tag.append(option_latest)
+
+                                for v in versions:
+                                    option = soup.new_tag("option", value=f"../{v}")
+                                    option.string = v
+
+                                    # Mark as selected if it's the current version
+                                    if v == version:
+                                        option.attrs["selected"] = "selected"
+
+                                    select_tag.append(option)
+
+                        with open(file_path, 'w') as f:
+                            f.write(str(soup))
+
+                    except Exception as e:
+                        logger.error(f"Error updating {file_path}. Error: {e}")
 
 
 def generate_versioning_sidebar(app, config):
