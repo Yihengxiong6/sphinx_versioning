@@ -78,6 +78,7 @@ def update_sidebar_links_for_versioned_docs(versions_dir, versions):
             for file in files:
                 if file.endswith('.html'):
                     file_path = os.path.join(root, file)
+                    file_modified = False  # Track if the file was modified
                     
                     try:
                         with open(file_path, 'r') as f:
@@ -87,6 +88,7 @@ def update_sidebar_links_for_versioned_docs(versions_dir, versions):
                             select_tag = soup.find("select", {"id": "sphinx_versioning_dropdown_menu"})
 
                             if select_tag:
+                                logger.info(f"Updating version dropdown for {version} in {file}")
                                 select_tag.clear()  # Clear existing options
 
                                 option_latest = soup.new_tag("option", value="/")
@@ -102,12 +104,16 @@ def update_sidebar_links_for_versioned_docs(versions_dir, versions):
                                         option.attrs["selected"] = "selected"
 
                                     select_tag.append(option)
+                                
+                                file_modified = True
 
-                        with open(file_path, 'w') as f:
-                            f.write(str(soup))
+                        # Only write back to the file if it was modified
+                        if file_modified:
+                            with open(file_path, 'w') as f:
+                                f.write(str(soup))
 
                     except Exception as e:
-                        logger.error(f"Error updating {file_path}. Error: {e}")
+                        logger.error(f"Error processing {file_path}. Error: {e}")
 
 
 def generate_versioning_sidebar(app, config):
