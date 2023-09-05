@@ -9,8 +9,34 @@ from contextlib import contextmanager
 from sphinx.cmd.build import build_main
 import tempfile
 import logging
+import json
 
 logging.basicConfig(level=logging.INFO, format='[sphinx-versioning] %(message)s')
+
+
+def get_version_list(srcdir):
+    """Get a list of versions by listing subdirectories of _static/sphinx_versioning_plugin/."""
+    versions_dir = os.path.join(srcdir, "_static", "sphinx_versioning_plugin")
+    if not os.path.exists(versions_dir):
+        return []
+    
+    # List subdirectories
+    subdirs = [d for d in os.listdir(versions_dir) if os.path.isdir(os.path.join(versions_dir, d))]
+    return sorted(subdirs, reverse=True)
+
+def update_version_json(srcdir):
+    """Updates the versions.json file with the list of current versions."""
+    versions_dir = os.path.join(srcdir, "_static", "sphinx_versioning_plugin")
+    
+    # Get versions
+    sphinx_versions = get_version_list(srcdir)
+
+    # Write to versions.json
+    json_path = os.path.join(versions_dir, "versions.json")
+    with open(json_path, 'w') as f:
+        json.dump(sphinx_versions, f)
+
+
 
 def find_conf_file(start_dir):
     """
@@ -130,6 +156,7 @@ if args.delete:
         logging.error(f"[ERROR] {args.version} is not found!")
         exit(1)
     shutil.rmtree(os.path.join(docs_dir, f"_static/sphinx_versioning_plugin/{args.version}"))
+    update_version_json(docs_dir)
 else:
     with tempfile.TemporaryDirectory(dir=parent_dir) as temp_dir:
         if args.venv:
@@ -139,3 +166,4 @@ else:
                 build_version(temp_dir, docs_dir, args.version, venv_path)
         else:
             build_version(temp_dir, docs_dir, args.version)
+        update_version_json(docs_dir)

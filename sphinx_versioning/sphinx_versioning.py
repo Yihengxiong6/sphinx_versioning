@@ -1,29 +1,79 @@
 import os
+import json
 from sphinx.util import logging
 from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
 
 
-TEMPLATE_CONTENT_LATEST_BUILD = """{% if sphinx_versions %}
-    <span style="vertical-align: middle;">{{ _('Versions') }}</span>
-    <select style="vertical-align: middle; margin-left: 5px;" onchange="window.location.href=this.value" id="sphinx_versioning_dropdown_menu">
-        <option value="/" selected>Latest</option>
-        {%- for item in sphinx_versions %}
-            <option value="{{ pathto('_static/sphinx_versioning_plugin/{}'.format(item), 1) }}">{{ item }}</option>
-        {%- endfor %}
-    </select>
-{% endif %}
+TEMPLATE_CONTENT_LATEST = """
+<span style="vertical-align: middle;">{{ _('Versions') }}</span>
+<select style="vertical-align: middle; margin-left: 5px;" onchange="window.location.href=this.value" id="sphinx_versioning_dropdown_menu">
+    <option value="/">Latest</option>
+    <!-- Additional versions will be populated here by JavaScript -->
+</select>
+<script>
+    fetch('/_static/sphinx_versioning_plugin/versions.json')
+        .then(response => response.json())
+        .then(versions => {
+            const dropdown = document.getElementById('sphinx_versioning_dropdown_menu');
+            versions.forEach(version => {
+                const option = document.createElement('option');
+                option.value = `/_static/sphinx_versioning_plugin/${version}/`;
+                option.text = version;
+
+                // If current page URL contains this version, set it as selected
+                if(window.location.pathname.includes(`_static/sphinx_versioning_plugin/${version}/`)) {
+                    option.selected = true;
+                }
+                dropdown.appendChild(option);
+            });
+        });
+</script>
 """
 
-TEMPLATE_CONTENT_VERSION_BUILD = """<span style="vertical-align: middle;">{{ _('Versions') }}</span>
-    <select style="vertical-align: middle; margin-left: 5px;" onchange="window.location.href=this.value" id="sphinx_versioning_dropdown_menu">
-        <option value="/">Latest</option>
-    </select>
+
+TEMPLATE_CONTENT_VERSIONED = """
+<span style="vertical-align: middle;">{{ _('Versions') }}</span>
+<select style="vertical-align: middle; margin-left: 5px;" onchange="window.location.href=this.value" id="sphinx_versioning_dropdown_menu">
+    <option value="/">Latest</option>
+    <!-- Additional versions will be populated here by JavaScript -->
+</select>
+<script>
+    fetch('/_static/sphinx_versioning_plugin/versions.json')
+        .then(response => response.json())
+        .then(versions => {
+            const dropdown = document.getElementById('sphinx_versioning_dropdown_menu');
+            versions.forEach(version => {
+                const option = document.createElement('option');
+                option.value = `/_static/sphinx_versioning_plugin/${version}/`;
+                option.text = version;
+
+                // If current page URL contains this version, set it as selected
+                if(window.location.pathname.includes(`_static/sphinx_versioning_plugin/${version}/`)) {
+                    option.selected = true;
+                }
+                dropdown.appendChild(option);
+            });
+        });
+</script>
 """
 
 
-def write_template_file_for_latest_build(app):
+def update_version_json(app):
+    """Updates the versions.json file with the list of current versions."""
+    versions_dir = os.path.join(app.srcdir, "_static", "sphinx_versioning_plugin")
+    
+    # Get versions
+    sphinx_versions = get_version_list(app)
+
+    # Write to versions.json
+    json_path = os.path.join(versions_dir, "versions.json")
+    with open(json_path, 'w') as f:
+        json.dump(sphinx_versions, f)
+
+
+def write_template_file(app, versioning_type):
     """
     Write the template file for the latest build. The build should be triggered by `sphinx build`.
     The template should have link to all the versions available.
@@ -34,27 +84,18 @@ def write_template_file_for_latest_build(app):
     # create the directory if it doesn't exist
     os.makedirs(templates_dir, exist_ok=True)
 
-    # if the template file already exists, don't write it again
-    if template_path:
-        return
+    # # if the template file already exists, don't write it again
+    # if template_path:
+    #     return
 
     # else write the template content to api_docs_sidebar.html
     with open(os.path.join(templates_dir, "sphinx_versioning.html"), "w") as f:
-        f.write(TEMPLATE_CONTENT_LATEST_BUILD)
-
-
-def write_template_file_for_version_build(app):
-    """
-    Write the template file for the version build. The build should be triggered by `sphinx-version -v <version>`.
-    The template should only have link to the latest version.
-    """
-    templates_dir = os.path.join(app.srcdir, "_templates/sidebar")
-
-    os.makedirs(templates_dir, exist_ok=True)
-
-    # write the template content to sphinx_versioningapi_docs_sidebar.html
-    with open(os.path.join(templates_dir, "sphinx_versioning.html"), "w") as f:
-        f.write(TEMPLATE_CONTENT_VERSION_BUILD)
+        if versioning_type != "1":
+            print("Writing latest version template")
+            f.write(TEMPLATE_CONTENT_LATEST)
+        else:
+            print("Writing versioned template")
+            f.write(TEMPLATE_CONTENT_VERSIONED)
 
 
 def get_version_list(app):
@@ -68,76 +109,29 @@ def get_version_list(app):
     return sorted(subdirs, reverse=True)  # Assuming you'd like the versions sorted in descending order
 
 
-def update_sidebar_links_for_versioned_docs(versions_dir, versions):
-    """
-    Update all the .html files under each version in 
-    `_static/sphinx_versioning_plugin/` with the available versions.
-    """
-    for version in versions:
-        for root, dirs, files in os.walk(os.path.join(versions_dir, version)):
-            for file in files:
-                if file.endswith('.html'):
-                    file_path = os.path.join(root, file)
-                    file_modified = False  # Track if the file was modified
-                    
-                    try:
-                        with open(file_path, 'r') as f:
-                            soup = BeautifulSoup(f, 'html.parser')
+def update_version_json(app, versions):
+    """Updates the versions.json file with the list of current versions."""
+    versions_dir = os.path.join(app.srcdir, "_static", "sphinx_versioning_plugin")
 
-                            # Find the select tag with the specified id
-                            select_tag = soup.find("select", {"id": "sphinx_versioning_dropdown_menu"})
-
-                            if select_tag:
-                                logger.info(f"Updating version dropdown for {version} in {file}")
-                                select_tag.clear()  # Clear existing options
-
-                                option_latest = soup.new_tag("option", value="/")
-                                option_latest.string = "Latest"
-                                select_tag.append(option_latest)
-
-                                for v in versions:
-                                    option = soup.new_tag("option", value=f"../{v}")
-                                    option.string = v
-
-                                    # Mark as selected if it's the current version
-                                    if v == version:
-                                        option.attrs["selected"] = "selected"
-
-                                    select_tag.append(option)
-                                
-                                file_modified = True
-
-                        # Only write back to the file if it was modified
-                        if file_modified:
-                            with open(file_path, 'w') as f:
-                                f.write(str(soup))
-
-                    except Exception as e:
-                        logger.error(f"Error processing {file_path}. Error: {e}")
+    if not os.path.exists(versions_dir):
+        os.makedirs(versions_dir)
+    
+    # Write to versions.json
+    json_path = os.path.join(versions_dir, "versions.json")
+    with open(json_path, 'w') as f:
+        json.dump(versions, f)
 
 
 def generate_versioning_sidebar(app, config):
-    
-    sphinx_versions_env = os.environ.get("SPHINX_VERSIONING_PLUGIN")
-    
-    if sphinx_versions_env == "1":
-        logger.info("Versioned docs build")
-        write_template_file_for_version_build(app)
-        return
 
     # write the template file
-    write_template_file_for_latest_build(app)
+    write_template_file(app, os.environ.get("SPHINX_VERSIONING_PLUGIN"))
 
-    # Get versions from the directory structure
-    sphinx_versions = get_version_list(app)
-    
-    # Update the sidebar links for versioned docs
-    versions_dir = os.path.join(app.srcdir, "_static", "sphinx_versioning_plugin")
+    # get the versions
+    versions = get_version_list(app)
 
-    update_sidebar_links_for_versioned_docs(versions_dir, sphinx_versions)
-
-    # update html_context with versions
-    app.config.html_context.update({"sphinx_versions": sphinx_versions})
+    # Now also update the JSON file after generating sidebar
+    update_version_json(app, versions)
 
 
 def setup(app):
