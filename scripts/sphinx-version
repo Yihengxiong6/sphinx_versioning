@@ -88,7 +88,7 @@ def build_version(temp_dir, docs_dir, version, venv_dir=None):
     if venv_dir:
         with set_version_build_env():
             python_exe = os.path.join(venv_dir, 'bin', 'python')
-            cmd = [python_exe, "-m", "sphinx.cmd.build", "-b", "html", temp_dir, os.path.join(docs_dir, f"_static/sphinx_versioning_plugin/{version}")]
+            cmd = [python_exe, "-m", "sphinx.cmd.build", "-b", "html", temp_dir, os.path.join(docs_dir, f"sphinx_versioning_plugin/{version}")]
             try:
                 subprocess.check_call(cmd)
             except subprocess.CalledProcessError:
