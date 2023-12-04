@@ -13,6 +13,8 @@ import json
 
 logging.basicConfig(level=logging.INFO, format='[sphinx-versioning] %(message)s')
 
+UNNECESSARY_DIRECTORIES = [".doctrees", "_sources", ".venv"]
+UNNECESSARY_FILES = [".buildinfo"]
 
 def get_version_list(srcdir):
     """Get a list of versions by listing subdirectories of _static/sphinx_versioning_plugin/."""
@@ -110,24 +112,34 @@ def build_version(temp_dir, docs_dir, version, venv_dir=None):
     """
     shutil.copytree(docs_dir, temp_dir, dirs_exist_ok=True)
     shutil.rmtree(os.path.join(temp_dir, '_static/sphinx_versioning_plugin'), ignore_errors=True)
+    versioned_docs_dir = os.path.join(docs_dir, f"_static/sphinx_versioning_plugin/{version}")
 
     if venv_dir:
         with set_version_build_env():
             python_exe = os.path.join(venv_dir, 'bin', 'python')
-            cmd = [python_exe, "-m", "sphinx.cmd.build", "-b", "html", temp_dir, os.path.join(docs_dir, f"_static/sphinx_versioning_plugin/{version}")]
+            cmd = [python_exe, "-m", "sphinx.cmd.build", "-b", "html", temp_dir, versioned_docs_dir]
             try:
                 subprocess.check_call(cmd)
             except subprocess.CalledProcessError:
-                logging.info(f"[ERROR] Failed to build the version {args.version}")
+                logging.info(f"[ERROR] Failed to build the version {version}")
                 exit(1)
     else:
         with set_version_build_env():
             # Build the docs using the temporary directory as the source
-            result = build_main(["-b", "html", temp_dir, os.path.join(docs_dir, f"_static/sphinx_versioning_plugin/{args.version}")])
+            result = build_main(["-b", "html", temp_dir, os.path.join(docs_dir, versioned_docs_dir)])
 
             if result == 2:
-                logging.info(f"[ERROR] Failed to build the version {args.version}")
+                logging.info(f"[ERROR] Failed to build the version {version}")
                 exit(1)
+    
+    try:
+        # Delete unnecessary files
+        for d in UNNECESSARY_DIRECTORIES:
+            shutil.rmtree(os.path.join(versioned_docs_dir, d), ignore_errors=True)
+        for f in UNNECESSARY_FILES:
+            os.remove(os.path.join(versioned_docs_dir, f))
+    except:
+        logging.warning(f"[WARNING] Failed to delete unnecessary files in {versioned_docs_dir}")
     
     logging.info(f"Version {version} is added. Run sphinx build to see the version on the sidebar")
 
